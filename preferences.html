@@ -51,6 +51,22 @@
         .pref-indent {
             margin-left: 20px;
         }
+
+        .shortcuts {
+            margin-top: 4px;
+            border-collapse: collapse;
+        }
+
+        .shortcuts td {
+            padding: 3px 0;
+            vertical-align: baseline;
+        }
+
+        .shortcuts td.key {
+            width: 5.5em;
+            font-size: 14px;
+            white-space: nowrap;
+        }
     </style>
 </head>
 
@@ -124,6 +140,32 @@
     <div class="pref-section">
         <label><input type="checkbox" data-type="bool" data-pref-key="show_osd" />
             Show a notification when a segment is skipped</label>
+    </div>
+
+    <div class="pref-section">
+        Shortcuts
+        <table class="shortcuts pref-indent">
+            <tr>
+                <td class="key">&#8997;&#8984;Z</td>
+                <td>Undo the last skip &mdash; go back to where it jumped from,
+                    without skipping it again</td>
+            </tr>
+            <tr>
+                <td class="key">&#8997;&#8984;E</td>
+                <td>Turn auto-skip on or off</td>
+            </tr>
+        </table>
+        <div class="pref-help small secondary">
+            Both are also in IINA&rsquo;s Plugins menu, under EDL Skip, where you
+            can see them without coming back here.
+        </div>
+    </div>
+
+    <div class="pref-section">
+        <div class="pref-help small secondary">
+            The sidebar has an <strong>EDL</strong> tab listing the segments of
+            the file being played. Clicking one jumps to its start.
+        </div>
     </div>
 </body>
 
