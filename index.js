@@ -42,6 +42,12 @@ const KIND_LABEL = { recap: "Recap", intro: "Intro", credits: "Credits" };
 // `used` is what makes a segment skip only once per playback.
 let segments = [];
 
+// The URL those segments were read for. Advancing through a playlist does not
+// reliably deliver iina.file-loaded to an already-running instance, which used
+// to leave the previous episode's spent segments in place — so the file is
+// verified on every tick rather than trusted to an event.
+let loadedFor = "";
+
 function pref(key, fallback) {
   const value = preferences.get(key);
   return value === undefined || value === null ? fallback : value;
@@ -163,6 +169,7 @@ function parseEdl(text) {
 
 function loadSidecar() {
   segments = [];
+  loadedFor = core.status.url || "";
 
   if (core.status.isNetworkResource) return;
 
@@ -213,6 +220,8 @@ function consume(segment) {
 }
 
 function onPositionChanged() {
+  if ((core.status.url || "") !== loadedFor) loadSidecar();
+
   if (!segments.length) return;
   if (!pref("enabled", true)) return;
 
