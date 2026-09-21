@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>EDL Skip</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            padding: 16px;
+            margin: 0;
+            font-size: 13px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+        }
+
+        p {
+            margin: 0;
+        }
+
+        small,
+        .small {
+            font-size: 11px;
+        }
+
+        .secondary {
+            color: rgba(0, 0, 0, 0.5);
+        }
+
+        .pref-section {
+            margin-bottom: 12px;
+        }
+
+        .pref-help {
+            margin-top: 2px;
+        }
+
+        .pref-group {
+            margin-top: 4px;
+            line-height: 24px;
+        }
+
+        .pref-indent {
+            margin-left: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="pref-section">
+        <label><input type="checkbox" data-type="bool" data-pref-key="enabled" />
+            Skip segments automatically</label>
+        <div class="pref-help small secondary">
+            Reads <code>&lt;video&gt;.edl</code> next to the file, the same sidecar Kodi uses.
+            Each segment is skipped at most once per playback, so rewinding back into
+            one plays it normally.
+        </div>
+    </div>
+
+    <div class="pref-section">
+        Segments to skip
+        <div class="pref-group pref-indent">
+            <div>
+                <label><input type="checkbox" data-type="bool" data-pref-key="skip_recap" />
+                    Recap &mdash; &ldquo;previously on&rdquo;</label>
+            </div>
+            <div>
+                <label><input type="checkbox" data-type="bool" data-pref-key="skip_intro" />
+                    Intro &mdash; opening titles</label>
+            </div>
+            <div>
+                <label><input type="checkbox" data-type="bool" data-pref-key="skip_credits" />
+                    Credits &mdash; closing titles</label>
+            </div>
+        </div>
+        <div class="pref-help small secondary">
+            Sidecars written by media-toolkit label every segment. In files from
+            elsewhere the labels are usually missing, and segments are sorted by
+            position instead: one starting at zero counts as a recap, the last one
+            as credits.
+        </div>
+    </div>
+
+    <div class="pref-section">
+        When a segment runs to the end of the file
+        <div class="pref-group pref-indent">
+            <div>
+                <label><input type="radio" name="end_of_file" value="skip" data-pref-key />
+                    Skip anyway, ending the file</label>
+            </div>
+            <div>
+                <label><input type="radio" name="end_of_file" value="next" data-pref-key />
+                    Go to the next item in the playlist</label>
+            </div>
+            <div>
+                <label><input type="radio" name="end_of_file" value="play" data-pref-key />
+                    Leave it alone and play to the end</label>
+            </div>
+        </div>
+        <div class="pref-help small secondary">
+            Closing credits normally run to the very end, so skipping them ends
+            playback &mdash; which is what Kodi does and the default here.
+        </div>
+    </div>
+
+    <div class="pref-section">
+        <label><input type="checkbox" data-type="bool" data-pref-key="show_osd" />
+            Show a notification when a segment is skipped</label>
+    </div>
+</body>
+
+</html>
