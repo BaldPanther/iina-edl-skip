@@ -369,9 +369,12 @@ function refreshSidebar() {
   sidebar.postMessage("segments", sidebarPayload());
 }
 
+
 event.on("iina.window-loaded", function () {
-  // The page announces itself once loaded; until then there is nobody to
-  // deliver to, so the first payload is sent from the "ready" handler.
+  // loadFile comes first. Loading a page drops whatever was registered before
+  // it, so handlers attached earlier silently never fire — the page would sit
+  // on "Loading…" forever while the plugin waited for a greeting it discarded.
+  sidebar.loadFile("sidebar.html");
   sidebar.onMessage("ready", function () {
     sidebarReady = true;
     refreshSidebar();
@@ -379,7 +382,6 @@ event.on("iina.window-loaded", function () {
   sidebar.onMessage("seek", function (data) {
     if (data && typeof data.time === "number") seekExact(data.time);
   });
-  sidebar.loadFile("sidebar.html");
 });
 
 // ---------------------------------------------------------------------------
@@ -402,13 +404,13 @@ function buildMenu(refresh) {
         buildMenu(true);
         core.osd("EDL skip " + (next ? "on" : "off"));
       },
-      { selected: pref("enabled", true), keyBinding: "Meta+Shift+e" }
+      { selected: pref("enabled", true), keyBinding: "Meta+Shift+E" }
     )
   );
   // Always enabled, reporting "nothing to undo" when there is nothing. Keeping
   // its state fixed means the menu never has to be rebuilt mid-playback.
   menu.addItem(
-    menu.item("Undo Last Skip", undoLastSkip, { keyBinding: "Meta+Shift+z" })
+    menu.item("Undo Last Skip", undoLastSkip, { keyBinding: "Meta+Shift+Z" })
   );
   if (refresh) menu.forceUpdate();
 }

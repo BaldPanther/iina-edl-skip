@@ -46,6 +46,7 @@ function makeWorld(opts) {
       loaded: [],
       messages: [],
       handlers: {},
+      calls: [],
     },
     status: {
       url: opts.url || "file:///v/ep.mkv",
@@ -73,8 +74,17 @@ function makeWorld(opts) {
       on: function (name, cb) { world.handlers[name] = cb; },
     },
     sidebar: {
-      loadFile: function (p) { world.panel.loaded.push(p); },
-      onMessage: function (name, cb) { world.panel.handlers[name] = cb; },
+      loadFile: function (p) {
+        world.panel.loaded.push(p);
+        world.panel.calls.push("loadFile");
+        // Загрузка страницы сбрасывает ранее заданные обработчики — именно на
+        // этом панель однажды и зависла на "Loading…".
+        world.panel.handlers = {};
+      },
+      onMessage: function (name, cb) {
+        world.panel.calls.push("onMessage:" + name);
+        world.panel.handlers[name] = cb;
+      },
       postMessage: function (name, data) {
         world.panel.messages.push([name, data]);
       },
@@ -347,6 +357,11 @@ function testSidebar(repo) {
 
   w.handlers["iina.window-loaded"]();
   check("страница панели загружена", w.panel.loaded, ["sidebar.html"]);
+  check("обработчики заданы после загрузки страницы", w.panel.calls, [
+    "loadFile",
+    "onMessage:ready",
+    "onMessage:seek",
+  ]);
   check("всё ещё молчим, страница не ответила", w.panel.messages, []);
 
   // Страница сообщает, что готова принимать.

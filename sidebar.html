@@ -103,6 +103,8 @@
     </div>
 
     <script>
+        var greeted = false;
+
         function clock(seconds) {
             var s = Math.max(0, Math.round(seconds));
             var h = Math.floor(s / 3600);
@@ -114,6 +116,7 @@
         }
 
         function render(data) {
+            greeted = true;
             var root = document.getElementById("content");
             root.innerHTML = "";
 
@@ -166,10 +169,35 @@
             });
         }
 
-        iina.onMessage("segments", render);
+        function message(text) {
+            var el = document.getElementById("content");
+            if (el) el.innerHTML = '<div class="empty"></div>';
+            if (el) el.firstChild.textContent = text;
+        }
 
-        // Сообщаем плагину, что страница готова: до этого посылать ей нечего.
-        iina.postMessage("ready", {});
+        // window.iina is injected by IINA rather than served with the page, so
+        // it is not guaranteed to exist the moment this script runs.
+        function boot(attempt) {
+            if (typeof iina === "undefined" || typeof iina.onMessage !== "function") {
+                if (attempt < 100) setTimeout(function () { boot(attempt + 1); }, 50);
+                else message("Could not reach IINA from this page.");
+                return;
+            }
+            iina.onMessage("segments", render);
+            announce(0);
+        }
+
+        // The plugin has nothing to send until the page says it is listening,
+        // and the order in which it loads this page and subscribes to these
+        // messages is not ours to control — so keep saying it until an answer
+        // arrives.
+        function announce(attempt) {
+            if (greeted) return;
+            iina.postMessage("ready", {});
+            if (attempt < 40) setTimeout(function () { announce(attempt + 1); }, 250);
+        }
+
+        boot(0);
     </script>
 </body>
 
