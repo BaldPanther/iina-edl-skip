@@ -16,7 +16,7 @@
  * viewer rewind back into it afterwards. This plugin follows that rule.
  */
 
-const { core, event, mpv, menu, console, file, preferences } = iina;
+const { core, event, mpv, menu, console, file, preferences, sidebar } = iina;
 
 // Kodi EDL actions worth acting on: 3 = commercial break, 0 = cut. Actions
 // 1 (mute) and 2 (scene marker) are not skips and are ignored.
@@ -29,6 +29,10 @@ const MIN_REMAINING = 0.5;
 // A segment ending this close to the end of the file counts as running to the
 // end of it — media-toolkit extends credits all the way to the duration.
 const END_OF_FILE_SLACK = 5.0;
+
+// How many ticks to keep looking for markup after the file changes, before
+// concluding there is none. Chapters can take a moment to become readable.
+const LOAD_RETRIES = 10;
 
 const KIND_PREF = {
   recap: "skip_recap",
@@ -47,6 +51,18 @@ let segments = [];
 // to leave the previous episode's spent segments in place — so the file is
 // verified on every tick rather than trusted to an event.
 let loadedFor = "";
+
+// Chapters are not always readable the instant the file changes, so a load
+// that found nothing is retried for a few ticks before giving up.
+let retriesLeft = 0;
+
+// Where playback was when the last segment was skipped, for "Undo last skip".
+// Null when there is nothing to undo — a fresh file, or an undo already used.
+let lastSkip = null;
+
+// The sidebar APIs only work once the window exists, so nothing is sent before
+// "iina.window-loaded" has arrived and the page has reported itself ready.
+let sidebarReady = false;
 
 function pref(key, fallback) {
   const value = preferences.get(key);
@@ -167,8 +183,42 @@ function parseEdl(text) {
 // Playback
 // ---------------------------------------------------------------------------
 
-function loadSidecar() {
+// Matroska chapters, used only when no sidecar is there. media-toolkit writes
+// the same boundaries as chapters named Cold Open / Recap / Intro / Episode /
+// Credits, and unlike a sidecar they travel inside the file — surviving a move
+// to a NAS or a copy that leaves the .edl behind.
+function segmentsFromChapters() {
+  let list;
+  try {
+    list = mpv.getNative("chapter-list");
+  } catch (e) {
+    return [];
+  }
+  if (!list || !list.length) return [];
+
+  const duration = core.status.duration;
+  const found = [];
+
+  for (let i = 0; i < list.length; i++) {
+    const title = list[i].title;
+    if (!title) continue;
+
+    const kind = kindFromMarker(String(title).toLowerCase());
+    if (!kind) continue; // Cold Open and Episode are content, not skips
+
+    const start = list[i].time;
+    const end = i + 1 < list.length ? list[i + 1].time : duration;
+    if (typeof start !== "number" || typeof end !== "number") continue;
+    if (end <= start) continue;
+
+    found.push({ start: start, end: end, kind: kind, used: false });
+  }
+  return found;
+}
+
+function loadSegments() {
   segments = [];
+  lastSkip = null;
   loadedFor = core.status.url || "";
 
   if (core.status.isNetworkResource) return;
@@ -177,18 +227,35 @@ function loadSidecar() {
   if (!videoPath) return;
 
   const edlPath = edlPathFor(videoPath);
-  if (!file.exists(edlPath)) return;
-
-  let text;
-  try {
-    text = file.read(edlPath);
-  } catch (e) {
-    console.log("cannot read " + edlPath + ": " + e);
-    return;
+  if (file.exists(edlPath)) {
+    let text = null;
+    try {
+      text = file.read(edlPath);
+    } catch (e) {
+      console.log("cannot read " + edlPath + ": " + e);
+    }
+    if (text !== null) {
+      segments = parseEdl(text);
+      if (segments.length) {
+        console.log("loaded " + segments.length + " segment(s) from " + edlPath);
+        return;
+      }
+    }
   }
 
-  segments = parseEdl(text);
-  console.log("loaded " + segments.length + " segment(s) from " + edlPath);
+  if (pref("use_chapters", true)) {
+    segments = segmentsFromChapters();
+    if (segments.length) {
+      console.log("loaded " + segments.length + " segment(s) from chapters");
+    }
+  }
+}
+
+// Wraps loadSegments so every path that changes the segment list also updates
+// the sidebar, rather than each caller having to remember.
+function reloadSegments() {
+  loadSegments();
+  refreshSidebar();
 }
 
 // Absolute and frame-exact. core.seekTo() offers no precision control, and
@@ -197,8 +264,8 @@ function seekExact(position) {
   mpv.command("seek", [String(position), "absolute+exact"]);
 }
 
-// Returns true when playback actually moved, so the caller knows whether an
-// OSD message makes sense.
+// Reports what it did: "seek" moved within the file and can be undone,
+// "playlist" left for another file, "none" deliberately did nothing.
 function consume(segment) {
   const duration = core.status.duration;
   const runsToEndOfFile =
@@ -206,21 +273,29 @@ function consume(segment) {
 
   if (runsToEndOfFile) {
     const mode = pref("end_of_file", "skip");
-    if (mode === "play") return false;
+    if (mode === "play") return "none";
     if (mode === "next") {
       // "weak" is a no-op at the end of the playlist, in which case the
       // credits simply play out — the segment is already marked as used.
       mpv.command("playlist-next", ["weak"]);
-      return true;
+      return "playlist";
     }
   }
 
   seekExact(segment.end);
-  return true;
+  return "seek";
 }
 
 function onPositionChanged() {
-  if ((core.status.url || "") !== loadedFor) loadSidecar();
+  if ((core.status.url || "") !== loadedFor) {
+    retriesLeft = LOAD_RETRIES;
+    reloadSegments();
+  } else if (!segments.length && retriesLeft > 0) {
+    // Nothing found yet. Chapters in particular can lag behind the file
+    // change, so try again for a few ticks before settling on "no markup".
+    retriesLeft--;
+    reloadSegments();
+  }
 
   if (!segments.length) return;
   if (!pref("enabled", true)) return;
@@ -239,12 +314,73 @@ function onPositionChanged() {
     // to trigger the same segment a second time.
     segment.used = true;
 
-    if (consume(segment) && pref("show_osd", true)) {
+    const outcome = consume(segment);
+    if (outcome === "none") return;
+
+    // Only an in-file seek can be taken back; moving to the next episode
+    // leaves nothing here to return to.
+    lastSkip =
+      outcome === "seek"
+        ? { position: position, label: KIND_LABEL[segment.kind] }
+        : null;
+
+    refreshSidebar();
+    if (pref("show_osd", true)) {
       core.osd(KIND_LABEL[segment.kind] + " skipped");
     }
     return;
   }
 }
+
+// Return to where playback was when the last segment was skipped. The segment
+// stays marked as used, so it is not skipped straight out from under you.
+function undoLastSkip() {
+  if (!lastSkip) {
+    core.osd("Nothing to undo");
+    return;
+  }
+  const target = lastSkip;
+  lastSkip = null;
+  seekExact(target.position);
+  core.osd("Back to " + target.label.toLowerCase());
+}
+
+// ---------------------------------------------------------------------------
+// Sidebar tab
+// ---------------------------------------------------------------------------
+
+function sidebarPayload() {
+  return {
+    enabled: pref("enabled", true),
+    segments: segments.map(function (s) {
+      return {
+        start: s.start,
+        end: s.end,
+        label: KIND_LABEL[s.kind],
+        used: s.used,
+        enabled: pref(KIND_PREF[s.kind], true),
+      };
+    }),
+  };
+}
+
+function refreshSidebar() {
+  if (!sidebarReady) return;
+  sidebar.postMessage("segments", sidebarPayload());
+}
+
+event.on("iina.window-loaded", function () {
+  // The page announces itself once loaded; until then there is nobody to
+  // deliver to, so the first payload is sent from the "ready" handler.
+  sidebar.onMessage("ready", function () {
+    sidebarReady = true;
+    refreshSidebar();
+  });
+  sidebar.onMessage("seek", function (data) {
+    if (data && typeof data.time === "number") seekExact(data.time);
+  });
+  sidebar.loadFile("sidebar.html");
+});
 
 // ---------------------------------------------------------------------------
 // Menu
@@ -266,13 +402,18 @@ function buildMenu(refresh) {
         buildMenu(true);
         core.osd("EDL skip " + (next ? "on" : "off"));
       },
-      { selected: pref("enabled", true) }
+      { selected: pref("enabled", true), keyBinding: "Meta+Shift+e" }
     )
+  );
+  // Always enabled, reporting "nothing to undo" when there is nothing. Keeping
+  // its state fixed means the menu never has to be rebuilt mid-playback.
+  menu.addItem(
+    menu.item("Undo Last Skip", undoLastSkip, { keyBinding: "Meta+Shift+z" })
   );
   if (refresh) menu.forceUpdate();
 }
 
 buildMenu(false);
 
-event.on("iina.file-loaded", loadSidecar);
+event.on("iina.file-loaded", reloadSegments);
 event.on("mpv.time-pos.changed", onPositionChanged);

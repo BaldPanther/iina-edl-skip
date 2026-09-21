@@ -1,22 +1,29 @@
 {
   "name": "EDL Skip",
   "identifier": "io.github.baldpanther.edl-skip",
-  "version": "1.0.0",
-  "ghVersion": 1,
+  "version": "1.1.0",
+  "ghVersion": 2,
   "ghRepo": "BaldPanther/iina-edl-skip",
-  "description": "Automatically skips recaps, intros and credits using Kodi-style .edl sidecar files.",
+  "description": "Automatically skips recaps, intros and credits using Kodi-style .edl sidecar files, or Matroska chapters.",
   "author": {
     "name": "Bald Panther",
     "url": "https://github.com/BaldPanther/iina-edl-skip"
   },
   "entry": "index.js",
-  "permissions": ["show-osd", "file-system"],
+  "permissions": [
+    "show-osd",
+    "file-system"
+  ],
+  "sidebarTab": {
+    "name": "EDL"
+  },
   "preferencesPage": "preferences.html",
   "preferenceDefaults": {
     "enabled": true,
     "skip_recap": true,
     "skip_intro": true,
     "skip_credits": true,
+    "use_chapters": true,
     "show_osd": true,
     "end_of_file": "skip"
   }

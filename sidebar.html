@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>EDL</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --fg: #1d1d1f;
+            --dim: rgba(60, 60, 67, 0.6);
+            --line: rgba(60, 60, 67, 0.18);
+            --hover: rgba(0, 0, 0, 0.06);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --fg: #f5f5f7;
+                --dim: rgba(235, 235, 245, 0.6);
+                --line: rgba(235, 235, 245, 0.16);
+                --hover: rgba(255, 255, 255, 0.08);
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+            font-size: 12px;
+            color: var(--fg);
+            background: transparent;
+            -webkit-user-select: none;
+        }
+
+        .empty {
+            padding: 16px;
+            color: var(--dim);
+            line-height: 1.45;
+        }
+
+        .row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 7px 12px;
+            border-bottom: 1px solid var(--line);
+            cursor: default;
+        }
+
+        .row:hover {
+            background: var(--hover);
+        }
+
+        .label {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .time {
+            color: var(--dim);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .state {
+            padding: 2px 12px 10px;
+            color: var(--dim);
+            font-size: 11px;
+        }
+
+        /* Сегмент, который уже пропущен в этом просмотре, и тот, что выключен
+           в настройках, гасим одинаково — оба сейчас ничего не сделают. */
+        .row.spent .label,
+        .row.off .label {
+            opacity: 0.45;
+        }
+
+        .badge {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--dim);
+        }
+
+        .off-note {
+            padding: 10px 12px;
+            color: var(--dim);
+            border-bottom: 1px solid var(--line);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="content">
+        <div class="empty">Loading…</div>
+    </div>
+
+    <script>
+        function clock(seconds) {
+            var s = Math.max(0, Math.round(seconds));
+            var h = Math.floor(s / 3600);
+            var m = Math.floor((s % 3600) / 60);
+            var sec = s % 60;
+            var mm = h > 0 && m < 10 ? "0" + m : String(m);
+            var ss = sec < 10 ? "0" + sec : String(sec);
+            return (h > 0 ? h + ":" : "") + mm + ":" + ss;
+        }
+
+        function render(data) {
+            var root = document.getElementById("content");
+            root.innerHTML = "";
+
+            if (!data || !data.segments || !data.segments.length) {
+                var empty = document.createElement("div");
+                empty.className = "empty";
+                empty.textContent =
+                    "No markup for this file. Looked for an .edl sidecar next " +
+                    "to it, then for chapters inside it.";
+                root.appendChild(empty);
+                return;
+            }
+
+            if (!data.enabled) {
+                var note = document.createElement("div");
+                note.className = "off-note";
+                note.textContent = "Auto-skip is off. Click a row to jump.";
+                root.appendChild(note);
+            }
+
+            data.segments.forEach(function (seg) {
+                var row = document.createElement("div");
+                row.className =
+                    "row" + (seg.used ? " spent" : "") + (seg.enabled ? "" : " off");
+
+                var label = document.createElement("span");
+                label.className = "label";
+                label.textContent = seg.label;
+
+                var time = document.createElement("span");
+                time.className = "time";
+                time.textContent = clock(seg.start) + " → " + clock(seg.end);
+
+                row.appendChild(label);
+
+                if (seg.used || !seg.enabled) {
+                    var badge = document.createElement("span");
+                    badge.className = "badge";
+                    badge.textContent = seg.used ? "skipped" : "off";
+                    row.appendChild(badge);
+                }
+
+                row.appendChild(time);
+
+                row.addEventListener("click", function () {
+                    iina.postMessage("seek", { time: seg.start });
+                });
+
+                root.appendChild(row);
+            });
+        }
+
+        iina.onMessage("segments", render);
+
+        // Сообщаем плагину, что страница готова: до этого посылать ей нечего.
+        iina.postMessage("ready", {});
+    </script>
+</body>
+
+</html>

@@ -15,7 +15,7 @@ STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
 
 mkdir "$STAGE/$NAME.iinaplugin"
-for f in Info.json index.js preferences.html README.md LICENSE; do
+for f in Info.json index.js preferences.html sidebar.html README.md LICENSE; do
     cp "$SRC/$f" "$STAGE/$NAME.iinaplugin/$f"
 done
 

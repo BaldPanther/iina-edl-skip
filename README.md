@@ -18,6 +18,12 @@ IINA — no second database of timings, nothing to keep in sync.
   or two of itself on screen.
 - Network streams are ignored entirely; the plugin only touches local files.
 - State is per file. Opening another episode starts over.
+- When there is no sidecar, Matroska chapters named Recap, Intro or Credits are
+  used instead. A sidecar, when present, always wins.
+- **Undo Last Skip** (⌘⇧Z, also in the plugin menu) returns to where playback
+  was when the last segment was skipped, without skipping it again.
+- An **EDL** tab in the sidebar lists the segments of the current file, marks
+  the ones already skipped, and jumps to one when you click it.
 
 ## Install
 
@@ -79,8 +85,9 @@ IINA → Settings → Plugins → EDL Skip.
 
 | Setting | Default | |
 |---|---|---|
-| Skip segments automatically | on | Master switch, also in the plugin menu |
+| Skip segments automatically | on | Master switch, also in the plugin menu (⌘⇧E) |
 | Recap / Intro / Credits | all on | Which kinds of segment to act on |
+| Fall back to chapters | on | Used only when no sidecar is found |
 | When a segment runs to the end of the file | Skip anyway | See below |
 | Show a notification | on | Brief OSD message naming what was skipped |
 
@@ -93,6 +100,19 @@ segment alone so the credits play out.
 
 IINA 1.4 or newer. No build step, no dependencies — the plugin is plain
 JavaScript running in IINA's JavaScriptCore engine.
+
+## Tests
+
+```sh
+./tests/run.sh
+```
+
+`parser.test.js` covers the `.edl` parsing, `behaviour.test.js` drives the
+skipping itself against a stub of IINA's API — including the parts that cannot
+be reached from outside, since a plugin's key binding is a Cocoa menu
+equivalent that mpv's IPC cannot trigger. Both run on the JavaScriptCore that
+ships with macOS, through `osascript -l JavaScript`, so there is nothing to
+install.
 
 ## License
 
@@ -132,3 +152,13 @@ Recap / Intro / Credits, поведение на титрах и коротко�
 разметка всегда с маркерами `##`. Чужие файлы обычно без них — тогда сегменты
 раскладываются по положению: начинающийся с нуля считается recap, последний —
 титрами, остальные — интро.
+
+**Если сайдкара нет**, в дело идут главы Matroska с именами Recap, Intro или
+Credits — их пишет тот же `media-toolkit`. Главы едут внутри файла и переживают
+переезд, который оставил `.edl` позади. Сайдкар, когда он есть, всегда главнее.
+
+**⌘⇧Z отменяет последний пропуск** — возвращает туда, откуда только что
+выбросило, и повторно уже не выбрасывает. ⌘⇧E включает и выключает авто-пропуск.
+
+**Вкладка EDL в боковой панели** показывает сегменты текущего файла, отмечает
+уже пропущенные и прыгает к сегменту по клику.
