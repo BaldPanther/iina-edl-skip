@@ -20,7 +20,7 @@ IINA — no second database of timings, nothing to keep in sync.
 - State is per file. Opening another episode starts over.
 - When there is no sidecar, Matroska chapters named Recap, Intro or Credits are
   used instead. A sidecar, when present, always wins.
-- **Undo Last Skip** (⌘⇧Z, also in the plugin menu) returns to where playback
+- **Undo Last Skip** (⌥⌘Z, also in the plugin menu) returns to where playback
   was when the last segment was skipped, without skipping it again.
 - An **EDL** tab in the sidebar lists the segments of the current file, marks
   the ones already skipped, and jumps to one when you click it.
@@ -85,7 +85,7 @@ IINA → Settings → Plugins → EDL Skip.
 
 | Setting | Default | |
 |---|---|---|
-| Skip segments automatically | on | Master switch, also in the plugin menu (⌘⇧E) |
+| Skip segments automatically | on | Master switch, also in the plugin menu (⌥⌘E) |
 | Recap / Intro / Credits | all on | Which kinds of segment to act on |
 | Fall back to chapters | on | Used only when no sidecar is found |
 | When a segment runs to the end of the file | Skip anyway | See below |
@@ -157,8 +157,8 @@ Recap / Intro / Credits, поведение на титрах и коротко�
 Credits — их пишет тот же `media-toolkit`. Главы едут внутри файла и переживают
 переезд, который оставил `.edl` позади. Сайдкар, когда он есть, всегда главнее.
 
-**⌘⇧Z отменяет последний пропуск** — возвращает туда, откуда только что
-выбросило, и повторно уже не выбрасывает. ⌘⇧E включает и выключает авто-пропуск.
+**⌥⌘Z отменяет последний пропуск** — возвращает туда, откуда только что
+выбросило, и повторно уже не выбрасывает. ⌥⌘E включает и выключает авто-пропуск.
 
 **Вкладка EDL в боковой панели** показывает сегменты текущего файла, отмечает
 уже пропущенные и прыгает к сегменту по клику.

@@ -404,13 +404,17 @@ function buildMenu(refresh) {
         buildMenu(true);
         core.osd("EDL skip " + (next ? "on" : "off"));
       },
-      { selected: pref("enabled", true), keyBinding: "Meta+Shift+E" }
+      { selected: pref("enabled", true), keyBinding: "Alt+Meta+e" }
     )
   );
   // Always enabled, reporting "nothing to undo" when there is nothing. Keeping
   // its state fixed means the menu never has to be rebuilt mid-playback.
+  //
+  // On the key strings: a capital letter is how mpv spells Shift, so "Meta+Z"
+  // is ⌘⇧Z and there is no "Shift+" token for letters. ⌘⇧Z and ⌘Z are taken by
+  // IINA's own Redo and Undo menu items, hence Option rather than Shift here.
   menu.addItem(
-    menu.item("Undo Last Skip", undoLastSkip, { keyBinding: "Meta+Shift+Z" })
+    menu.item("Undo Last Skip", undoLastSkip, { keyBinding: "Alt+Meta+z" })
   );
   if (refresh) menu.forceUpdate();
 }
