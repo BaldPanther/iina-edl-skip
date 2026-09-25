@@ -74,7 +74,7 @@ three sections may be missing.
 
 Clock times (`00:01:42.000`) are accepted as well, for hand-written files.
 
-Sidecars written by [media-toolkit](https://github.com/BaldPanther/toolbox)
+Sidecars written by [media-toolkit](https://github.com/BaldPanther/media-toolkit)
 always carry the `##` markers. Files from elsewhere usually do not, and their
 segments are classified by position instead: one starting at zero counts as a
 recap, the last one as credits, anything in between as an intro.
@@ -148,7 +148,7 @@ Recap / Intro / Credits, поведение на титрах и коротко�
 и мы. Если это мешает, в настройках есть «перейти к следующему в плейлисте» и
 «не трогать, дать титрам доиграть».
 
-Файлы `.edl` пишет [media-toolkit](https://github.com/BaldPanther/toolbox); его
+Файлы `.edl` пишет [media-toolkit](https://github.com/BaldPanther/media-toolkit); его
 разметка всегда с маркерами `##`. Чужие файлы обычно без них — тогда сегменты
 раскладываются по положению: начинающийся с нуля считается recap, последний —
 титрами, остальные — интро.
